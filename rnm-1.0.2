@@ -1,0 +1,127 @@
+#! /usr/bin/perl
+# v. 1.0.2
+# Date 2009/12/16
+# Author: Ian Strascina
+
+
+${size} = @ARGV;
+${VERSION} = "1.0.2";
+
+sub usage {
+  print "\nrnm\tv${VERSION}\n";
+  print "Rename one or more files by removing a common substring\n";
+  print "Complements the `bkup' command\n";
+  print "\nUsage: rnm -sub=SUBSTRING [Options] File1 [File2 ...]\n";
+  print "\n    -sub=SUBSTRING\t\tRemove SUBSTRING from file names\n\n";
+  print "Options:\n    -d=DIR, --directory=DIR\tRename files to specified directory\n";
+  print "    -c, --copy\t\t\tCopy to renamed files, not overwrite\n\n";
+  print "    -h, --help\t\t\tPrint this help, then exit\n";
+  print "    -v, --version\t\tPrint the version number and exit\n\n";
+  print "Examples:\n";
+  print "    rnm -sub=OLD *OLD*\t\tRemove the substring OLD from all files where\n";
+  print "\t\t\t\tOLD is part of the file name\n";
+  print "    rnm -sub=OLD -d=../ *OLD*\tRename them to the parent directory\n";
+  print "    rnm -sub=BAK -c *BAK\tRemoves BAK from all file names ending in BAK,\n";
+  print "\t\t\t\tand copies them.\n\n";
+  exit;
+}
+
+if (${size} == 0) {
+  print "rnm: No substring or input file(s) specified.  " .
+    "Try `rnm --help' for more information\n";
+  exit;
+}
+
+@{files} = ();
+${dir} = "./";
+${set} = 0;
+${copy} = 0;
+${sub} = 0;
+
+foreach ${par} (@ARGV) {
+  # switch (${par})
+  {
+    if ( (${par} =~ /^-h$/) || (${par} =~ /^--help$/)) {  # -h
+      usage;
+    }
+    if (${par} =~ /^-sub=((.)+)/) {  # -sub
+      ${sub} = ${1};
+      ${set} = 1;
+      last;
+    }
+    if ( (${par} =~ /^-d=(.+)/) || (${par} =~ /^--directory=(.+)/)){  # -d
+      ${dir} = ${1};
+      if (!(${dir} =~ /([^\/]*)(\/)$/)) { # doesn't end in a '/'
+        ${dir} = ${dir} . "/";
+      }
+      last;
+    }
+    if ( (${par} =~ /^-c$/) || (${par} =~ /^--copy$/)) {  # -c
+      ${copy} = 1;
+      last;
+    }
+	if ( (${par} =~ /^-v$/) || (${par} =~ /^--version$/)) {  # print version number; -v
+	  print "rnm version ${VERSION}\n";
+	  exit;
+	}
+    if (${par} =~ /^(--?)([^=]*)(=(.)*)?/) { # exit for unknown option
+      print "Unknown option: ${1}${2}\n";
+      exit;
+    }
+    (@{files}) = ((@{files}),(${par}));
+  } # end switch
+}
+
+
+if (${set} == 0) {  # MUST specify substring
+  print "MUST provide substring argument: -sub=<SUBSTRING>\n";
+  exit;
+}
+
+${num_files} = @{files};
+if (${num_files} == 0) {  # Put options, but no files to operate on
+  print "No input file(s) specified.\n";
+  exit;
+}
+
+
+foreach ${file} (@{files}) {
+
+  if (-f ${file}) {
+    if (${file} =~ /(.*)${sub}(.*)/) {  # file name has substring in it
+
+      ${new_file} = ${1} . ${2};
+      #print "1: ${new_file}\n";
+
+      if (${new_file} =~ /.*\/(.+)/) {  # strip off old path, put new
+	${new_file} = ${1};
+	#print "2: ${new_file}\n";
+      }
+
+      if (!(${dir} =~ /^\.\/$/)) {  # if directory is not ./
+	${new_file} = ${dir} . ${new_file};
+	#print "3: ${new_file}\n";
+      }
+
+
+      if (${copy} == 1) {
+	`cp ${file} ${new_file}`;
+	print "Copied ${file} to ${new_file}\n";
+      }
+      else {
+	`mv ${file} ${new_file}`;
+	print "Renamed ${file} to ${new_file}\n";
+      }
+    }
+    else {
+      print "${file} did not match substring\n";
+    }
+  }
+  elsif (-d ${file}) {  # ${file} is a directory
+    print "Skipping directory ${file}/\n";
+  }
+  else {
+    print "File not found: ${file}\n";
+  }
+
+}
